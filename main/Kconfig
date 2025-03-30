@@ -1,0 +1,11 @@
+menu "Probe WiFi Configuration"
+
+config PROBE_WIFI_SSID
+    string "WiFi SSID"
+    default "MY_WIFI_SSID"
+
+config PROBE_WIFI_PASS
+    string "WiFi Password"
+    default "MY_WIFI_PASS"
+
+endmenu
