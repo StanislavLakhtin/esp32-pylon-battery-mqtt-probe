@@ -19,6 +19,7 @@ typedef struct {
 typedef void (*pylon_packet_callback_t)(const char *packet, size_t len);
 
 void pylon_uart_init(uart_port_t port, pylon_packet_callback_t callback);
+
 void pylon_uart_input_byte(uint8_t byte);
 
 #endif

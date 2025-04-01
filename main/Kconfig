@@ -8,4 +8,16 @@ config PROBE_WIFI_PASS
     string "WiFi Password"
     default "MY_WIFI_PASS"
 
+config PROBE_NTP_SERVER
+    string "NTP server URI"
+    default "pool.ntp.org"
+
+config PROBE_NTP_UTC_OFFSET_MINUTES
+    string "UTC offset in minutes"
+    default "180"
+
+config PROBE_MQTT_BROKER_URI
+    string "MQTT brocker URI"
+    default "192.168.7.77"
+
 endmenu

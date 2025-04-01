@@ -10,7 +10,7 @@ static inline uint8_t hex_char_to_nibble(char c) {
 }
 
 static inline uint8_t hex_to_uint8(char *c) {
-  return hex_char_to_nibble(*c)<<4 | hex_char_to_nibble(*(c+1));
+    return hex_char_to_nibble(*c) << 4 | hex_char_to_nibble(*(c + 1));
 }
 
 static inline uint16_t ascii_hex2_to_u16(const uint8_t *p) {
@@ -37,26 +37,27 @@ static uint8_t compute_len_chksum(uint8_t len_id_hi, uint8_t len_id_mid, uint8_t
     for (int i = 0; i < 6; i++) sum += digits[i];
 
     uint8_t mod = sum % 16;
-    uint8_t chksum = (uint8_t)(~mod + 1);
+    uint8_t chksum = (uint8_t) (~mod + 1);
     return chksum;
 }
 
 uint16_t compute_checksum_ascii(const char *ascii, size_t len_ascii_without_soi_eoi) {
     uint32_t sum = 0;
     for (size_t i = 0; i < len_ascii_without_soi_eoi; i++) {
-        sum += (uint8_t)ascii[i];
+        sum += (uint8_t) ascii[i];
     }
 
-    uint16_t mod = (uint16_t)(sum & 0xFFFF);
-    uint16_t checksum = (uint16_t)(~mod + 1);
+    uint16_t mod = (uint16_t) (sum & 0xFFFF);
+    uint16_t checksum = (uint16_t) (~mod + 1);
     return checksum;
 }
 
 bool pylon_decode_ascii_hex(const char *input, size_t len_ascii, PylonPacketRaw *out) {
-    if (!input || !out ) return false;
+    if (!input || !out) return false;
 
     if (input[0] != 0x7e ||
-        input[len_ascii-1] != 0x0d) return false; // начало и конец пакета не соответствуют спецификации
+        input[len_ascii - 1] != 0x0d)
+        return false; // начало и конец пакета не соответствуют спецификации
 
     size_t len_bin = (len_ascii - 2) / 2; // -SOI -EOI
 
@@ -65,7 +66,7 @@ bool pylon_decode_ascii_hex(const char *input, size_t len_ascii, PylonPacketRaw 
         uint8_t hi = hex_char_to_nibble(input[i * 2]);
         uint8_t lo = hex_char_to_nibble(input[i * 2 + 1]);
         if (hi == 0xFF || lo == 0xFF) return false; // недопустимый символ
-        buffer[i-1] = (hi << 4) | lo;
+        buffer[i - 1] = (hi << 4) | lo;
     }
 
     uint16_t index = 0; // skip SOI
@@ -80,7 +81,7 @@ bool pylon_decode_ascii_hex(const char *input, size_t len_ascii, PylonPacketRaw 
     uint8_t len_id_mid = buffer[index++];
     uint8_t len_id_lo = buffer[index++];
 
-    uint32_t len_id = ((uint32_t)len_id_hi << 16) | ((uint32_t)len_id_mid << 8) | len_id_lo;
+    uint32_t len_id = ((uint32_t) len_id_hi << 16) | ((uint32_t) len_id_mid << 8) | len_id_lo;
 
     if (compute_len_chksum(len_id_hi, len_id_mid, len_id_lo) != len_chksum) {
         out->valid = false;
@@ -91,7 +92,7 @@ bool pylon_decode_ascii_hex(const char *input, size_t len_ascii, PylonPacketRaw 
     index++;
 
     if (out->length > PYLON_MAX_DATA_BYTES - index - 3) return false; // закодированная длинна больше, чем длинна пакета
-    if ( index + out->length + 3 > len_bin ) return false; // длинна больше размера структуры
+    if (index + out->length + 3 > len_bin) return false; // длинна больше размера структуры
 
     memcpy(out->data, &buffer[index], out->length);
     index += out->length;
@@ -113,13 +114,13 @@ static inline bool read_field_u16(const uint8_t *info, size_t len, size_t *index
 
 static inline bool read_field_u8(const uint8_t *info, size_t len, size_t *index, uint8_t *out) {
     if (*index + 2 > len) return false;
-    *out = (uint8_t)ascii_hex2_to_u16(&info[*index]);
+    *out = (uint8_t) ascii_hex2_to_u16(&info[*index]);
     *index += 2;
     return true;
 }
 
 bool pylon_parse_info_payload(const uint8_t *info, size_t len, PylonBatteryStatus *out) {
-    if (!info || !out ) return false;
+    if (!info || !out) return false;
 
     size_t index = 0;
     if (!read_field_u16(info, len, &index, &out->modules)) return false;
@@ -133,11 +134,11 @@ bool pylon_parse_info_payload(const uint8_t *info, size_t len, PylonBatteryStatu
     for (int i = 0; i < out->temperature_count; i++) {
         uint16_t temp;
         if (!read_field_u16(info, len, &index, &temp)) return false;
-        out->temperatures_c[i] = (int16_t)temp;
+        out->temperatures_c[i] = (int16_t) temp;
     }
     uint16_t tmp16;
     if (!read_field_u16(info, len, &index, &tmp16)) return false;
-    out->current_mA = (int16_t)tmp16;
+    out->current_mA = (int16_t) tmp16;
 
     if (!read_field_u16(info, len, &index, &out->total_voltage_mV)) return false;
     if (!read_field_u16(info, len, &index, &out->remaining_capacity_ah)) return false;

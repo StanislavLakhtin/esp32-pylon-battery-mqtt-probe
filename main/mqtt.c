@@ -12,13 +12,13 @@ static esp_mqtt_client_handle_t client = NULL;
 
 static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data) {
     esp_mqtt_event_handle_t event = (esp_mqtt_event_handle_t) event_data;
-    switch ((esp_mqtt_event_id_t)event_id) {
+    switch ((esp_mqtt_event_id_t) event_id) {
         case MQTT_EVENT_CONNECTED:
             ESP_LOGI(TAG, "MQTT connected");
-        break;
+            break;
         case MQTT_EVENT_DISCONNECTED:
             ESP_LOGI(TAG, "MQTT disconnected");
-        break;
+            break;
         default:
             break;
     }
@@ -28,7 +28,7 @@ static void mqtt_publish_task(void *param) {
     uint8_t buffer[256];
     while (1) {
         if (xQueueReceive(packet_queue, buffer, portMAX_DELAY)) {
-            esp_mqtt_client_publish(client, "/esp32/rs485", (char *)buffer, 0, 1, 0);
+            esp_mqtt_client_publish(client, "/esp32/rs485", (char *) buffer, 0, 1, 0);
         }
     }
 }

@@ -17,7 +17,9 @@ typedef struct {
 } MQTTPayload;
 
 void mqtt_publish_queue_init(void);
+
 bool mqtt_publish_enqueue(const MQTTPayload *msg);
+
 void mqtt_publish_task(void *param);
 
 #endif
