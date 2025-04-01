@@ -60,7 +60,7 @@ void app_main(void) {
     time_sync_init();
     mqtt_init();
 
-    pylon_uart_init(UART_NUM_1, my_packet_handler);
+    pylon_uart_init(RS485_UART_NUM, my_packet_handler);
 
     ESP_LOGI(TAG, "System initialization complete");
 }
