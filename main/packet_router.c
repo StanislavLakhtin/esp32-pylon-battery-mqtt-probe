@@ -34,8 +34,7 @@ void my_packet_handler(const char *ascii_packet, size_t len) {
         return;
     }
 
-    if (raw.cid1 != 0x34 || raw.cid2 != 0x36) return;
-    if (raw.length < 2 || raw.data[0] != 0x30 || raw.data[1] != 0x30) return;
+    if (raw.cid1 != 0x46 || raw.cid2 != 0x00) return;
 
     PylonBatteryStatus status;
     if (!pylon_parse_info_payload(raw.data + 2, raw.length - 2, &status)) {

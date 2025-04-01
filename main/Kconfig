@@ -13,8 +13,8 @@ config PROBE_NTP_SERVER
     default "pool.ntp.org"
 
 config PROBE_NTP_UTC_OFFSET_MINUTES
-    string "UTC offset in minutes"
-    default "180"
+    int "UTC offset in minutes"
+    default 180
 
 config PROBE_MQTT_BROKER_URI
     string "MQTT brocker URI"

@@ -38,8 +38,8 @@ bool mqtt_format_info_payload(const PylonBatteryStatus *s, MQTTPayload *out) {
                        "\"cell_voltage_mV\":%s,\"temperatures_c\":%s,"
                        "\"current_mA\":%d,\"total_voltage_mV\":%u,\"remaining_capacity_ah\":%u,"
                        "\"user_defined_number\":%u,\"total_capacity_ah\":%u,\"cycle_count\":%u,"
-                       "\"batteryCapacity\":%u,\"currentCapacity\":%u,\"userVoltage0\":%u,\"
-                       "userVoltage1\":%u,\"userVoltage2\":%u,\"userVoltage3\":%u,\"userVoltage4\":%u,\"
+                       "\"batteryCapacity\":%u,\"currentCapacity\":%u,\"userVoltage0\":%u,\""
+                       "userVoltage1\":%u,\"userVoltage2\":%u,\"userVoltage3\":%u,\"userVoltage4\":%u,\""
                        "unknown\":%u}",
                        timestamp,
                        s->modules,
