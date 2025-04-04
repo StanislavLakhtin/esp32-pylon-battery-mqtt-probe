@@ -71,6 +71,7 @@ void wifi_init_sta(void) {
         .sta = {
             .ssid = WIFI_SSID,
             .password = WIFI_PASS,
+            .failure_retry_cnt = 2,
             .threshold.authmode = WIFI_AUTH_WPA2_PSK,
         },
     };

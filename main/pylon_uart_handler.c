@@ -33,7 +33,7 @@ static void IRAM_ATTR uart_isr_handler(void *arg) {
     if (!dev) return;
 
     while (dev->status.rxfifo_cnt) {
-        uint8_t byte = (uint8_t)(dev->ahb_fifo.rw_byte);
+        uint8_t byte = (uint8_t)(dev->fifo.rw_byte);
 
         if (!receiving) {
             if (byte == 0x7E) {

@@ -15,6 +15,18 @@ static bool synced = false;
 
 static void time_sync_notification_cb(struct timeval *tv) {
     ESP_LOGI(TAG, "Time synchronized via SNTP");
+    time_t now;
+    time(&now);
+    struct tm timeinfo;
+    localtime_r(&now, &timeinfo);
+
+    ESP_LOGI("time_sync", "Current time: %04d-%02d-%02d %02d:%02d:%02d",
+            timeinfo.tm_year + 1900,
+            timeinfo.tm_mon + 1,
+            timeinfo.tm_mday,
+            timeinfo.tm_hour,
+            timeinfo.tm_min,
+            timeinfo.tm_sec);
     synced = true;
 }
 
@@ -32,27 +44,22 @@ bool get_current_iso8601(char *buf, size_t maxlen) {
 
     time_t now = 0;
     struct tm timeinfo;
+
     time(&now);
-    localtime_r(&now, &timeinfo);
 
     // apply UTC offset from config
-    int offset_sec = PROBE_UTC_OFFSET_MINUTES * 60;
-    now += offset_sec;
-    gmtime_r(&now, &timeinfo);
-
     int offset_min = PROBE_UTC_OFFSET_MINUTES;
-    int hours = offset_min / 60;
-    int minutes = abs(offset_min % 60);
+    now += offset_min * 60;
 
-    snprintf(buf, maxlen, "%04d-%02d-%02dT%02d:%02d:%02d%+03d:%02d",
-             timeinfo.tm_year + 1900,
-             timeinfo.tm_mon + 1,
-             timeinfo.tm_mday,
-             timeinfo.tm_hour,
-             timeinfo.tm_min,
-             timeinfo.tm_sec,
-             hours,
-             minutes);
+    localtime_r(&now, &timeinfo);
+
+    ESP_LOGI("time_sync", "Current global time: %04d-%02d-%02d %02d:%02d:%02d",
+        timeinfo.tm_year + 1900,
+        timeinfo.tm_mon + 1,
+        timeinfo.tm_mday,
+        timeinfo.tm_hour,
+        timeinfo.tm_min,
+        timeinfo.tm_sec);
 
     return true;
 }
