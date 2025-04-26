@@ -1,6 +1,14 @@
+/**
+ * The software was developed by Stanislav Lakhtin (lakhtin.stanislav@gmail.com)
+ * You can use it or parts of it freely in any non-commercial projects.
+ * In case of use in commercial projects, please kindly contact the author.
+ */
 #include "pylon_packet.h"
+#include "esp_log.h"
 #include <string.h>
 #include <ctype.h>
+
+static const char *TAG = "pylon_packet";
 
 static inline uint8_t hex_char_to_nibble(char c) {
     if (c >= '0' && c <= '9') return c - '0';
@@ -9,36 +17,54 @@ static inline uint8_t hex_char_to_nibble(char c) {
     return 0xFF;
 }
 
-static inline uint8_t hex_to_uint8(char *c) {
+static inline uint8_t hex_to_uint8(const char *c) {
     return hex_char_to_nibble(*c) << 4 | hex_char_to_nibble(*(c + 1));
 }
 
-static inline uint16_t ascii_hex2_to_u16(const uint8_t *p) {
+static uint8_t copy_ascii_to_hex(const char *in, char *out, size_t ascii_len) {
+    size_t hex_len = ascii_len / 2;
+    for (size_t i = 0; i < hex_len; i++) {
+        out[i] = hex_to_uint8(&in[i * 2]);
+    }
+    return hex_len;
+}
+
+static inline uint16_t ascii_hex2_to_u16(const char *p) {
     return (hex_char_to_nibble(p[0]) << 4) | hex_char_to_nibble(p[1]);
 }
 
-static inline uint16_t ascii_hex3_to_u16(const uint8_t *p) {
+static inline uint16_t ascii_hex3_to_u16(const char *p) {
     return (hex_char_to_nibble(p[0]) << 8) | (hex_char_to_nibble(p[1]) << 4) | hex_char_to_nibble(p[2]);
 }
 
-static inline uint16_t ascii_hex4_to_u16(const uint8_t *p) {
+static inline uint16_t ascii_hex4_to_u16(const char *p) {
     return (hex_char_to_nibble(p[0]) << 12) | (hex_char_to_nibble(p[1]) << 8) |
            (hex_char_to_nibble(p[2]) << 4) | hex_char_to_nibble(p[3]);
 }
 
-static uint8_t compute_len_chksum(uint8_t len_id_hi, uint8_t len_id_mid, uint8_t len_id_lo) {
-    uint8_t digits[6] = {
-        (len_id_hi >> 4) & 0x0F, len_id_hi & 0x0F,
-        (len_id_mid >> 4) & 0x0F, len_id_mid & 0x0F,
-        (len_id_lo >> 4) & 0x0F, len_id_lo & 0x0F
-    };
+uint16_t pylon_parse_length_field(const char *ptr) {
+    if (!ptr) {
+        ESP_LOGE(TAG, "Invalid pointer");
+        return 0xFFFF; // недопустимый указатель
+    }
 
-    uint8_t sum = 0;
-    for (int i = 0; i < 6; i++) sum += digits[i];
+    uint8_t len_chksum = hex_char_to_nibble(ptr[0]);
+    uint8_t byte1 = hex_char_to_nibble(ptr[1]);
+    uint8_t byte2 = hex_char_to_nibble(ptr[2]);
+    uint8_t byte3 = hex_char_to_nibble(ptr[3]);
 
-    uint8_t mod = sum % 16;
-    uint8_t chksum = (uint8_t) (~mod + 1);
-    return chksum;
+    ESP_LOGD(TAG,"bytes for length field: %02X (check) - %02X %02X %02X", len_chksum, byte1, byte2, byte3);
+
+    uint16_t len_id = byte1 << 8 | byte2 << 4 | byte3;
+
+    uint8_t computed_chk = (~( (byte1 + byte2 + byte3) % 16) & 0x0F) + 1;
+
+    if (computed_chk != len_chksum) {
+        ESP_LOGI(TAG, "Checksum error for length %04X: expected %02X, got %02X", len_id, computed_chk, len_chksum);
+        return 0xFFFF; // ошибка контрольной суммы
+    }
+
+    return len_id;
 }
 
 uint16_t compute_checksum_ascii(const char *ascii, size_t len_ascii_without_soi_eoi) {
@@ -53,111 +79,186 @@ uint16_t compute_checksum_ascii(const char *ascii, size_t len_ascii_without_soi_
 }
 
 bool pylon_decode_ascii_hex(const char *input, size_t len_ascii, PylonPacketRaw *out) {
-    if (!input || !out) return false;
+    if (!input || !out) {
+        ESP_LOGE(TAG, "Invalid input or output pointer");
+        return false; // недопустимый указатель
+    }
 
-    if (input[0] != 0x7e ||
-        input[len_ascii - 1] != 0x0d)
+    if (input[0] != 0x7e || input[len_ascii - 1] != 0x0d) {
+        ESP_LOGE(TAG, "Invalid packet start or end");
         return false; // начало и конец пакета не соответствуют спецификации
-
-    size_t len_bin = (len_ascii - 2) / 2; // -SOI -EOI
-
-    uint8_t buffer[PYLON_MAX_DATA_BYTES] = {0};
-    for (size_t i = 1; i < len_bin; i++) {
-        uint8_t hi = hex_char_to_nibble(input[i * 2]);
-        uint8_t lo = hex_char_to_nibble(input[i * 2 + 1]);
-        if (hi == 0xFF || lo == 0xFF) return false; // недопустимый символ
-        buffer[i - 1] = (hi << 4) | lo;
     }
 
-    uint16_t index = 0; // skip SOI
+    uint16_t index = 1; // skip SOI
 
-    out->version = buffer[index++];
-    out->address = buffer[index++];
-    out->cid1 = buffer[index++];
-    out->cid2 = buffer[index++];
-
-    uint8_t len_chksum = buffer[index++];
-    uint8_t len_id_hi = buffer[index++];
-    uint8_t len_id_mid = buffer[index++];
-    uint8_t len_id_lo = buffer[index++];
-
-    uint32_t len_id = ((uint32_t) len_id_hi << 16) | ((uint32_t) len_id_mid << 8) | len_id_lo;
-
-    if (compute_len_chksum(len_id_hi, len_id_mid, len_id_lo) != len_chksum) {
+    out->version = hex_to_uint8(&input[index]);
+    index += 2;
+    out->address = hex_to_uint8(&input[index]);
+    index += 2;
+    out->cid1 = hex_to_uint8(&input[index]);
+    index += 2;
+    out->cid2 = hex_to_uint8(&input[index]);
+    index += 2;
+    if (out->cid1 != 0x46 || out->cid2 != 0x00) {
+        ESP_LOGE(TAG, "Unknown CID: %02X%02X", out->cid1, out->cid2);
+        return false; // неизвестный CID
+    }
+    ESP_LOG_BUFFER_HEXDUMP(TAG, input, len_ascii, ESP_LOG_DEBUG);
+    uint16_t length_to_copy = pylon_parse_length_field(&input[index]);
+    index += 4; 
+    if (length_to_copy == 0xFFFF) {
         out->valid = false;
-        return false;
+        ESP_LOGE(TAG, "Invalid length field. ");
+        return false; // ошибка длины
     }
 
-    out->length = len_id;
-    index++;
+    if (length_to_copy > PYLON_MAX_DATA_BYTES - index - 3) {
+        ESP_LOGE(TAG, "Length exceeds maximum data size");
+        out->valid = false;
+        return false; // длина превышает максимальный размер данных
+    }
 
-    if (out->length > PYLON_MAX_DATA_BYTES - index - 3) return false; // закодированная длинна больше, чем длинна пакета
-    if (index + out->length + 3 > len_bin) return false; // длинна больше размера структуры
+    out->data_length = copy_ascii_to_hex(&input[index], (char *) out->data, length_to_copy);
+    index += length_to_copy;
+    ESP_LOGD(TAG, "Copied %d bytes, index is %zu", out->data_length, index);
 
-    memcpy(out->data, &buffer[index], out->length);
-    index += out->length;
+    uint16_t checksum = compute_checksum_ascii(&input[1], len_ascii - 6); // - SOI - EOI - checksum
 
-    out->checksum = buffer[index++];
-
-    uint16_t compute_checksum = compute_checksum_ascii(input + 2, len_ascii - 2);
-    out->valid = (compute_checksum == out->checksum);
+    out->checksum = ascii_hex4_to_u16(&input[index]);
+    out->valid = (out->checksum == checksum);
+    ESP_LOGI(TAG, "Checksum: %04X, computed: %04X", out->checksum, checksum);
+    if (!out->valid) {
+        ESP_LOGE(TAG, "Checksum error");
+        return false; // ошибка контрольной суммы
+    }
 
     return out->valid;
 }
 
-static inline bool read_field_u16(const uint8_t *info, size_t len, size_t *index, uint16_t *out) {
-    if (*index + 4 > len) return false;
-    *out = ascii_hex4_to_u16(&info[*index]);
-    *index += 4;
-    return true;
-}
-
-static inline bool read_field_u8(const uint8_t *info, size_t len, size_t *index, uint8_t *out) {
-    if (*index + 2 > len) return false;
-    *out = (uint8_t) ascii_hex2_to_u16(&info[*index]);
-    *index += 2;
-    return true;
-}
-
 bool pylon_parse_info_payload(const uint8_t *info, size_t len, PylonBatteryStatus *out) {
-    if (!info || !out) return false;
+    if (!info || !out) {
+        ESP_LOGE("pylon_flat", "Null pointer");
+        return false;
+    }
+
+    ESP_LOG_BUFFER_HEXDUMP(TAG, info, len, ESP_LOG_DEBUG);
 
     size_t index = 0;
-    if (!read_field_u16(info, len, &index, &out->modules)) return false;
-    if (!read_field_u8(info, len, &index, &out->cell_count)) return false;
-    if (out->cell_count > PYLON_MAX_CELLS) return false;
+
+    if (index + 2 > len) return false;
+    out->modules = pylon_read_u16(&info[index]);
+    index += 2;
+    ESP_LOGI(TAG, "Module ID: %u", out->modules);
+
+    if (index + 1 > len) return false;
+    out->cell_count = pylon_read_u8(&info[index]);
+    index += 1;
+    ESP_LOGI(TAG, "Cells: %u", out->cell_count);
+
+    if (out->cell_count > PYLON_MAX_CELLS) {
+        ESP_LOGE("pylon_flat", "Cell count too large: %u", out->cell_count);
+        return false;
+    }
+
     for (int i = 0; i < out->cell_count; i++) {
-        if (!read_field_u16(info, len, &index, &out->cell_voltage_mV[i])) return false;
+        if (index + 2 > len) return false;
+        out->cell_voltage_mV[i] = pylon_read_u16(&info[index]);
+        index += 2;
+        ESP_LOGI(TAG, "Cell %d: %u mV", i, out->cell_voltage_mV[i]);
     }
-    if (!read_field_u8(info, len, &index, &out->temperature_count)) return false;
-    if (out->temperature_count > PYLON_MAX_TEMPS) return false;
+
+    if (index + 1 > len) return false;
+    out->temperature_count = pylon_read_u8(&info[index]);
+    index += 1;
+
+    if (out->temperature_count > PYLON_MAX_TEMPS) {
+        ESP_LOGE("pylon_flat", "Temperature count too large: %u", out->temperature_count);
+        return false;
+    }
+
     for (int i = 0; i < out->temperature_count; i++) {
-        uint16_t temp;
-        if (!read_field_u16(info, len, &index, &temp)) return false;
-        out->temperatures_c[i] = (int16_t) temp;
+        if (index + 2 > len) return false;
+        out->temperatures_c[i] = pylon_read_s16(&info[index]);
+        index += 2;
+        ESP_LOGI(TAG, "Temperature %d: %d.%02d C", i, out->temperatures_c[i]/100, abs(out->temperatures_c[i] % 100));
     }
-    uint16_t tmp16;
-    if (!read_field_u16(info, len, &index, &tmp16)) return false;
-    out->current_mA = (int16_t) tmp16;
 
-    if (!read_field_u16(info, len, &index, &out->total_voltage_mV)) return false;
-    if (!read_field_u16(info, len, &index, &out->remaining_capacity_ah)) return false;
+    if (index + 2 > len) return false;
+    out->current_mA = pylon_read_s16(&info[index]);
+    index += 2;
+    ESP_LOGI(TAG, "Current: %d mA", out->current_mA);
+    if (out->current_mA > 0) {
+        ESP_LOGI(TAG, "State: Charging");
+    } else if (out->current_mA < 0) {
+        ESP_LOGI(TAG, "State: Discharging");
+    } else {
+        ESP_LOGI(TAG, "State: Idle");
+    }
 
-    uint8_t tmp8;
-    if (!read_field_u8(info, len, &index, &tmp8)) return false;
-    out->user_defined_number = tmp8;
+    if (index + 2 > len) return false;
+    out->total_voltage_mV = pylon_read_u16(&info[index]);
+    index += 2;
+    ESP_LOGI(TAG, "Total voltage: %d.%02d mV", out->total_voltage_mV/1000, abs(out->total_voltage_mV % 1000));
 
-    if (!read_field_u16(info, len, &index, &out->total_capacity_ah)) return false;
-    if (!read_field_u16(info, len, &index, &out->cycle_count)) return false;
+    if (index + 2 > len) return false;
+    out->remaining_capacity_ah = pylon_read_u16(&info[index]);
+    index += 2;
+    ESP_LOGI(TAG, "Remaining capacity: %d.%02d Ah", out->remaining_capacity_ah/100, abs(out->remaining_capacity_ah % 100));
 
-    if (!read_field_u16(info, len, &index, &out->batteryCapacity)) return false;
-    if (!read_field_u16(info, len, &index, &out->currentCapacity)) return false;
-    if (!read_field_u16(info, len, &index, &out->userVoltage0)) return false;
-    if (!read_field_u16(info, len, &index, &out->userVoltage1)) return false;
-    if (!read_field_u16(info, len, &index, &out->userVoltage2)) return false;
-    if (!read_field_u16(info, len, &index, &out->userVoltage3)) return false;
-    if (!read_field_u16(info, len, &index, &out->userVoltage4)) return false;
-    if (!read_field_u16(info, len, &index, &out->unknown)) return false;
+    if (index + 1 > len) return false;
+    out->user_defined_number = pylon_read_u8(&info[index]);
+    index += 1;
+    ESP_LOGI(TAG, "User defined number: %u", out->user_defined_number);
+
+    if (index + 2 > len) return false;
+    out->total_capacity_ah = pylon_read_u16(&info[index]);
+    index += 2;
+    ESP_LOGI(TAG, "Total capacity: %d.%02d Ah", out->total_capacity_ah / 100, abs(out->total_capacity_ah % 100));
+
+    if (index + 2 > len) return false;
+    out->cycle_count = pylon_read_u16(&info[index]);
+    index += 2;
+    ESP_LOGI(TAG, "Cycle count: %u", out->cycle_count);
+
+    if (index + 2 > len) return false;
+    out->batteryCapacity = pylon_read_u16(&info[index]);
+    index += 2;
+    ESP_LOGI(TAG, "Battery capacity: %d.%02d Ah", out->batteryCapacity / 100, abs(out->batteryCapacity % 100));
+
+    if (index + 2 > len) return false;
+    out->currentCapacity = pylon_read_u16(&info[index]);
+    index += 2;
+    ESP_LOGI(TAG, "Current capacity: %d.%02d Ah", out->currentCapacity / 100, abs(out->currentCapacity % 100));
+
+    if (index + 2 > len) return false;
+    out->userVoltage0 = pylon_read_u16(&info[index]);
+    index += 2;
+    ESP_LOGI(TAG, "User voltage 0: %d.%02d mV", out->userVoltage0/ 1000, abs(out->userVoltage0 % 1000));
+
+    if (index + 2 > len) return false;
+    out->userVoltage1 = pylon_read_u16(&info[index]);
+    index += 2;
+    ESP_LOGI(TAG, "User voltage 1: %d.%02d mV", out->userVoltage1/ 1000, abs(out->userVoltage1 % 1000));
+
+    if (index + 2 > len) return false;
+    out->userVoltage2 = pylon_read_u16(&info[index]);
+    index += 2;
+    ESP_LOGI(TAG, "User voltage 2: %d.%02d mV", out->userVoltage2/ 1000, abs(out->userVoltage2 % 1000));
+
+    if (index + 2 > len) return false;
+    out->userVoltage3 = pylon_read_u16(&info[index]);
+    index += 2;
+    ESP_LOGI(TAG, "User voltage 3: %d.%02d mV", out->userVoltage3/ 1000, abs(out->userVoltage3 % 1000));
+
+    if (index + 2 > len) return false;
+    out->userVoltage4 = pylon_read_u16(&info[index]);
+    index += 2;
+    ESP_LOGI(TAG, "User voltage 4: %d.%02d mV", out->userVoltage4/ 1000, abs(out->userVoltage4 % 1000));
+
+    if (index + 2 > len) return false;
+    out->unknown = pylon_read_u16(&info[index]);
+    index += 2;
+    ESP_LOGI(TAG, "Unknown: %u", out->unknown);
 
     return true;
 }

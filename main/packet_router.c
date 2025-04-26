@@ -1,3 +1,8 @@
+/**
+ * The software was developed by Stanislav Lakhtin (lakhtin.stanislav@gmail.com)
+ * You can use it or parts of it freely in any non-commercial projects.
+ * In case of use in commercial projects, please kindly contact the author.
+ */
 #include "packet_router.h"
 #include "pylon_packet.h"
 #include "mqtt_formatter.h"
@@ -34,10 +39,13 @@ void my_packet_handler(const char *ascii_packet, size_t len) {
         return;
     }
 
-    if (raw.cid1 != 0x46 || raw.cid2 != 0x00) return;
+    if (raw.cid1 != 0x46 || raw.cid2 != 0x00) {
+        ESP_LOGW(TAG, "Unknown CID: %02X%02X", raw.cid1, raw.cid2);
+        return;
+    }
 
     PylonBatteryStatus status;
-    if (!pylon_parse_info_payload(raw.data + 2, raw.length - 2, &status)) {
+    if (!pylon_parse_info_payload(raw.data, raw.data_length, &status)) {
         ESP_LOGW(TAG, "Parse INFO failed");
         return;
     }

@@ -1,3 +1,8 @@
+/**
+ * The software was developed by Stanislav Lakhtin (lakhtin.stanislav@gmail.com)
+ * You can use it or parts of it freely in any non-commercial projects.
+ * In case of use in commercial projects, please kindly contact the author.
+ */
 #include "time_sync.h"
 #include "esp_sntp.h"
 #include "esp_log.h"
