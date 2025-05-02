@@ -13,11 +13,13 @@
 #include "esp_wifi.h"
 #include "esp_netif.h"
 
+#include "led_pwm.h"
 #include "wifi.h"
 #include "mqtt_queue.h"
 #include "time_sync.h"
 #include "pylon_uart_handler.h"
 #include "packet_router.h"
+#include "oled_ui.h"
 
 static const char *TAG = "main";
 
@@ -57,6 +59,9 @@ void app_main(void) {
         ret = nvs_flash_init();
     }
     ESP_ERROR_CHECK(ret);
+    led_fade_pwm_init();
+
+    oled_ui_init();
 
     ESP_LOGI(TAG, "Initializing WiFi and network stack");
     wifi_init_sta();
