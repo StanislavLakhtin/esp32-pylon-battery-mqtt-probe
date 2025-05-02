@@ -10,7 +10,7 @@
 #include <time.h>
 #include <sys/time.h>
 
-static const char *TAG = "time_sync";
+static const char *TAG = "ntp";
 
 #ifndef PROBE_UTC_OFFSET_MINUTES
 #define PROBE_UTC_OFFSET_MINUTES CONFIG_PROBE_NTP_UTC_OFFSET_MINUTES
@@ -25,7 +25,7 @@ static void time_sync_notification_cb(struct timeval *tv) {
     struct tm timeinfo;
     localtime_r(&now, &timeinfo);
 
-    ESP_LOGI("time_sync", "Current time: %04d-%02d-%02d %02d:%02d:%02d",
+    ESP_LOGI(TAG, "Current time: %04d-%02d-%02d %02d:%02d:%02d",
             timeinfo.tm_year + 1900,
             timeinfo.tm_mon + 1,
             timeinfo.tm_mday,
@@ -58,7 +58,7 @@ bool get_current_iso8601(char *buf, size_t maxlen) {
 
     localtime_r(&now, &timeinfo);
 
-    ESP_LOGI("time_sync", "Current global time: %04d-%02d-%02d %02d:%02d:%02d",
+    ESP_LOGI(TAG, "Current global time: %04d-%02d-%02d %02d:%02d:%02d",
         timeinfo.tm_year + 1900,
         timeinfo.tm_mon + 1,
         timeinfo.tm_mday,

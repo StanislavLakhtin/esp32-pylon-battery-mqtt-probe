@@ -32,6 +32,23 @@ void packet_router_init(void) {
     retry_queue = xQueueCreate(10, sizeof(MQTTPayload));
 }
 
+bool mqtt_retry_enqueue_force(QueueHandle_t q, const MQTTPayload *msg)
+{
+    if (xQueueSend(q, msg, 0) == pdTRUE) {
+        return true;
+    } else {
+        ESP_LOGI(TAG, "Stored packet for later (offline mode)");    
+    }
+
+    MQTTPayload discarded;
+    if (xQueueReceive(q, &discarded, 0) == pdTRUE) {
+        ESP_LOGW("MQTT", "Queue full, discarding oldest message");
+        return xQueueSend(q, msg, 0) == pdTRUE;
+    }
+
+    return false;
+}
+
 void my_packet_handler(const char *ascii_packet, size_t len) {
     PylonPacketRaw raw;
     if (!pylon_decode_ascii_hex(ascii_packet, len, &raw)) {
@@ -61,10 +78,8 @@ void my_packet_handler(const char *ascii_packet, size_t len) {
             ESP_LOGW(TAG, "Failed to enqueue MQTT message");
         }
     } else {
-        if (retry_queue && xQueueSend(retry_queue, &msg, 0) != pdTRUE) {
-            ESP_LOGW(TAG, "Retry queue full, dropping packet");
-        } else {
-            ESP_LOGI(TAG, "Stored packet for later (offline mode)");
+        if (!mqtt_retry_enqueue_force(retry_queue, &msg)) {
+            ESP_LOGW(TAG, "Retry queue full, failed to force enqueue");
         }
     }
 }

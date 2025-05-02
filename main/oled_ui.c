@@ -9,6 +9,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <esp_log.h>
+#include <time.h>
+#include <sys/time.h>
 
 static const char *TAG = "i2c";
 
@@ -44,15 +46,25 @@ static void draw_wifi(void)
   ssd1306_clear_display(oled, false);
 
   char line[COLS + 1];
-  const char *st = (wifi_state == WIFI_DISCONNECTED) ? "down" : (wifi_state == WIFI_CONNECTING) ? "connecting"
-                                                                                                : "up";
+  const char *st = (wifi_state == WIFI_DISCONNECTED) ? "Looking AP" : (wifi_state == WIFI_CONNECTING) ? "Connecting"
+                                                                                                      : "Connected";
   snprintf(line, sizeof line, "WiFi: %s", st);
-  ssd1306_display_text(oled, 2, line, false);
+  ssd1306_display_text(oled, 0, line, false);
 
   snprintf(line, sizeof line, "SSID:%-.11s", wifi_ssid);
   ssd1306_display_text(oled, 1, line, false);
 
-  snprintf(line, sizeof line, "%-.15s", wifi_ip);
+  snprintf(line, sizeof line, "IP:%-.13s", wifi_ip);
+  ssd1306_display_text(oled, 2, line, false);
+
+  time_t now;
+  time(&now);
+  struct tm timeinfo;
+  localtime_r(&now, &timeinfo);
+  snprintf(line, sizeof(line), "%02d:%02d:%02d",
+           timeinfo.tm_hour,
+           timeinfo.tm_min,
+           timeinfo.tm_sec);
   ssd1306_display_text(oled, 3, line, false);
 }
 
@@ -119,7 +131,6 @@ static void oled_task(void *arg)
   }
 }
 
-/* ─────────── публичный API ─────────── */
 void oled_ui_init(void)
 {
   mux = xSemaphoreCreateMutex();
