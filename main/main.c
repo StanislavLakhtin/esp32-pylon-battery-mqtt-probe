@@ -59,8 +59,6 @@ void app_main(void) {
         ret = nvs_flash_init();
     }
     ESP_ERROR_CHECK(ret);
-    led_fade_pwm_init();
-
     oled_ui_init();
 
     ESP_LOGI(TAG, "Initializing WiFi and network stack");

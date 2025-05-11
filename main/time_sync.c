@@ -7,8 +7,6 @@
 #include "esp_sntp.h"
 #include "esp_log.h"
 #include "sdkconfig.h"
-#include <time.h>
-#include <sys/time.h>
 
 static const char *TAG = "ntp";
 
@@ -67,4 +65,15 @@ bool get_current_iso8601(char *buf, size_t maxlen) {
         timeinfo.tm_sec);
 
     return true;
+}
+
+time_t get_now(void) {
+    time_t now = 0;
+    time(&now);
+
+    // apply UTC offset from config
+    int offset_min = PROBE_UTC_OFFSET_MINUTES;
+    now += offset_min * 60;
+
+    return now;
 }
