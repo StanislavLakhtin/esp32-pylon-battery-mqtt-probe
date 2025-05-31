@@ -30,8 +30,9 @@ static bool    mqtt_connected = false;
 static char    mqtt_ip[COLS + 1] = "";
 static time_t  mqtt_last_sent = 0;
 
-void  oled_ui_init(void);   
-void  oled_ui_cycle_screen(void);    
+void  oled_ui_init(void);
+
+void  oled_ui_cycle_screen(void);
 
 void  oled_ui_update_wifi(const char *ssid, wifi_state_t state, const char *ip);
 

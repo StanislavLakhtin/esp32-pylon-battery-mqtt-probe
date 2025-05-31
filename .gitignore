@@ -15,6 +15,7 @@ CMakeUserPresets.json
 .DS_Store
 .idea
 .vscode
+.cache
 sdkconfig
 sdkconfig.defaults
 sdkconfig.old
