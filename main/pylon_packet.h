@@ -76,14 +76,14 @@ static inline uint8_t pylon_read_u8(const uint8_t *data) {
  * Read 16-bit unsigned integer, high byte first (Pylon protocol format)
  */
 static inline uint16_t pylon_read_u16(const uint8_t *data) {
-    return ((uint16_t)data[0] << 8) | data[1];
+    return ((uint16_t) data[0] << 8) | data[1];
 }
 
 /**
  * Read 16-bit signed integer, high byte first (Pylon protocol format)
  */
 static inline int16_t pylon_read_s16(const uint8_t *data) {
-    return (int16_t)(((uint16_t)data[0] << 8) | data[1]);
+    return (int16_t) (((uint16_t) data[0] << 8) | data[1]);
 }
 
 #endif // PYLON_PACKET_H

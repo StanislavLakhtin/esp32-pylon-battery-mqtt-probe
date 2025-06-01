@@ -4,7 +4,7 @@ dependencies:
       type: idf
     version: 5.4.1
   k0i05/esp_ssd1306:
-    component_hash: be7d9177dfbe89f9d27121b3931d5cc64e9246cb926b77ab4c89c78c19b38de9
+    component_hash: 7df2506f5eddfddc910cb716dcdc1b673ca5df332d25a8dc3a49e071e6ed2390
     dependencies:
     - name: idf
       require: private
@@ -19,9 +19,9 @@ dependencies:
     targets:
     - esp32
     - esp32s3
-    version: 1.2.5
+    version: 1.2.6
   k0i05/esp_type_utils:
-    component_hash: dfe2feb2117ee060c085ec166b56cfd9d66cef4019216bf8722e45e43a3b562f
+    component_hash: 0315aa7577c96037b601be7499c4b434d32d4ae381e90308ac0da3323e3887dc
     dependencies:
     - name: idf
       require: private
@@ -32,7 +32,7 @@ dependencies:
     targets:
     - esp32
     - esp32s3
-    version: 1.2.5
+    version: 1.2.6
 direct_dependencies:
 - idf
 - k0i05/esp_ssd1306

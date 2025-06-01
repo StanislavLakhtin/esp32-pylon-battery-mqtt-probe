@@ -3,6 +3,6 @@ idf_component_register(
         "."
         INCLUDE_DIRS
         "."
-        PRIV_REQUIRES spi_flash 
+        PRIV_REQUIRES spi_flash
         REQUIRES mqtt esp_wifi esp_event nvs_flash driver esp_ssd1306
 )

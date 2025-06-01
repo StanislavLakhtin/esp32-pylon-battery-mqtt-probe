@@ -53,11 +53,11 @@ uint16_t pylon_parse_length_field(const char *ptr) {
     uint8_t byte2 = hex_char_to_nibble(ptr[2]);
     uint8_t byte3 = hex_char_to_nibble(ptr[3]);
 
-    ESP_LOGD(TAG,"bytes for length field: %02X (check) - %02X %02X %02X", len_chksum, byte1, byte2, byte3);
+    ESP_LOGD(TAG, "bytes for length field: %02X (check) - %02X %02X %02X", len_chksum, byte1, byte2, byte3);
 
     uint16_t len_id = byte1 << 8 | byte2 << 4 | byte3;
 
-    uint8_t computed_chk = (~( (byte1 + byte2 + byte3) % 16) & 0x0F) + 1;
+    uint8_t computed_chk = (~((byte1 + byte2 + byte3) % 16) & 0x0F) + 1;
 
     if (computed_chk != len_chksum) {
         ESP_LOGI(TAG, "Checksum error for length %04X: expected %02X, got %02X", len_id, computed_chk, len_chksum);
@@ -81,12 +81,12 @@ uint16_t compute_checksum_ascii(const char *ascii, size_t len_ascii_without_soi_
 bool pylon_decode_ascii_hex(const char *input, size_t len_ascii, PylonPacketRaw *out) {
     if (!input || !out) {
         ESP_LOGE(TAG, "Invalid input or output pointer");
-        return false; // недопустимый указатель
+        return false;
     }
 
     if (input[0] != 0x7e || input[len_ascii - 1] != 0x0d) {
         ESP_LOGE(TAG, "Invalid packet start or end");
-        return false; // начало и конец пакета не соответствуют спецификации
+        return false;
     }
 
     uint16_t index = 1; // skip SOI
@@ -100,12 +100,12 @@ bool pylon_decode_ascii_hex(const char *input, size_t len_ascii, PylonPacketRaw 
     out->cid2 = hex_to_uint8(&input[index]);
     index += 2;
     if (out->cid1 != 0x46 || out->cid2 != 0x00) {
-        ESP_LOGE(TAG, "Unknown CID: %02X%02X", out->cid1, out->cid2);
-        return false; // неизвестный CID
+        ESP_LOGW(TAG, "Unknown CID: %02X%02X", out->cid1, out->cid2);
+        return false;
     }
     ESP_LOG_BUFFER_HEXDUMP(TAG, input, len_ascii, ESP_LOG_DEBUG);
     uint16_t length_to_copy = pylon_parse_length_field(&input[index]);
-    index += 4; 
+    index += 4;
     if (length_to_copy == 0xFFFF) {
         out->valid = false;
         ESP_LOGE(TAG, "Invalid length field. ");
@@ -129,7 +129,7 @@ bool pylon_decode_ascii_hex(const char *input, size_t len_ascii, PylonPacketRaw 
     ESP_LOGI(TAG, "Checksum: %04X, computed: %04X", out->checksum, checksum);
     if (!out->valid) {
         ESP_LOGE(TAG, "Checksum error");
-        return false; // ошибка контрольной суммы
+        return false;
     }
 
     return out->valid;
@@ -203,7 +203,8 @@ bool pylon_parse_info_payload(const uint8_t *info, size_t len, PylonBatteryStatu
     if (index + 2 > len) return false;
     out->remaining_capacity_ah = pylon_read_u16(&info[index]);
     index += 2;
-    ESP_LOGI(TAG, "Remaining capacity: %d.%02d Ah", out->remaining_capacity_ah/100, abs(out->remaining_capacity_ah % 100));
+    ESP_LOGI(TAG, "Remaining capacity: %d.%02d Ah", out->remaining_capacity_ah/100,
+             abs(out->remaining_capacity_ah % 100));
 
     if (index + 1 > len) return false;
     out->user_defined_number = pylon_read_u8(&info[index]);

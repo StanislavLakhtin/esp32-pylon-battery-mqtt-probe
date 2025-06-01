@@ -6,5 +6,7 @@
 #ifndef WIFI_H
 #define WIFI_H
 
-void wifi_init_sta(void);
+#include "mqtt_client.h"
+
+void wifi_init_sta(esp_mqtt_client_handle_t mqtt_client);
 #endif

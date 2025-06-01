@@ -1,5 +1,9 @@
 menu "Probe WiFi Configuration"
 
+config PROBE_DEVICE_NAME
+    string "probe1"
+    default "probe1"
+
 config PROBE_WIFI_SSID
     string "WiFi SSID"
     default "MY_WIFI_SSID"
@@ -19,5 +23,23 @@ config PROBE_NTP_UTC_OFFSET_MINUTES
 config PROBE_MQTT_BROKER_URI
     string "MQTT brocker URI"
     default "192.168.7.77"
+
+config PROBE_MQTT_BROKER_TOPIC_PREFIX
+    string "Prefix for MQTT message"
+    default "sl"
+
+config PROBE_MQTT_BROKER_USERNAME
+    string "MQTT brocker username"
+    default "admin"
+
+config PROBE_MQTT_BROKER_PASSWORD
+    string "MQTT brocker password"
+    default "mqttadminpassword"
+
+config PROBE_EMULATE_UART
+    bool "Emulate UART with mock data"
+    default n
+    help
+        If enabled, probe will use mock data instead of reading real UART.
 
 endmenu

@@ -16,6 +16,7 @@ static QueueHandle_t mqtt_queue = NULL;
 static esp_mqtt_client_handle_t mqtt_client_handle = NULL;
 
 void mqtt_publish_queue_init(void) {
+    ESP_LOGI(TAG, "MQTT publish queue initializing");
     mqtt_queue = xQueueCreate(MQTT_QUEUE_SIZE, sizeof(MQTTPayload));
     xTaskCreatePinnedToCore(mqtt_publish_task, "mqtt_pub_task", 4096, NULL, 8, NULL, 1);
 }

@@ -29,15 +29,15 @@ void packet_router_set_online(bool online) {
 }
 
 void packet_router_init(void) {
+    ESP_LOGI(TAG, "Packet router initializing");
     retry_queue = xQueueCreate(10, sizeof(MQTTPayload));
 }
 
-bool mqtt_retry_enqueue_force(QueueHandle_t q, const MQTTPayload *msg)
-{
+bool mqtt_retry_enqueue_force(QueueHandle_t q, const MQTTPayload *msg) {
     if (xQueueSend(q, msg, 0) == pdTRUE) {
         return true;
     } else {
-        ESP_LOGI(TAG, "Stored packet for later (offline mode)");    
+        ESP_LOGI(TAG, "Stored packet for later (offline mode)");
     }
 
     MQTTPayload discarded;
@@ -57,13 +57,13 @@ void my_packet_handler(const char *ascii_packet, size_t len) {
     }
 
     if (raw.cid1 != 0x46 || raw.cid2 != 0x00) {
-        ESP_LOGW(TAG, "Unknown CID: %02X%02X", raw.cid1, raw.cid2);
+        ESP_LOGI(TAG, "Unknown CID: %02X%02X. Ignored", raw.cid1, raw.cid2);
         return;
     }
 
     PylonBatteryStatus status;
     if (!pylon_parse_info_payload(raw.data, raw.data_length, &status)) {
-        ESP_LOGW(TAG, "Parse INFO failed");
+        ESP_LOGI(TAG, "Parse INFO failed. Ignored");
         return;
     }
 

@@ -9,15 +9,29 @@
 #include <stdio.h>
 #include <string.h>
 
+#define MQTT_PREFIX CONFIG_PROBE_MQTT_BROKER_TOPIC_PREFIX "/" CONFIG_PROBE_DEVICE_NAME "/battery"
+
+bool get_iso8601(char *buffer, size_t len) {
+    time_t now = time(NULL);
+    struct tm timeinfo;
+    if (!gmtime_r(&now, &timeinfo)) {
+        return false;
+    }
+    if (strftime(buffer, len, "%Y-%m-%dT%H:%M:%SZ", &timeinfo) == 0) {
+        return false; // not enough space
+    }
+    return true;
+}
+
 bool mqtt_format_info_payload(const PylonBatteryStatus *s, MQTTPayload *out) {
     if (!s || !out) return false;
 
     char timestamp[32];
-    if (!get_current_iso8601(timestamp, sizeof(timestamp))) {
-        strncpy(timestamp, "unknown", sizeof(timestamp));
+    if (!get_iso8601(timestamp, sizeof(timestamp))) {
+        snprintf(timestamp, sizeof(timestamp), "1970-00-00T00H:00M:00Z");
     }
 
-    snprintf(out->topic, sizeof(out->topic), "/esp32/battery/%02X/info", s->user_defined_number);
+    snprintf(out->topic, sizeof(out->topic), "%s/%02X/info", MQTT_PREFIX, s->user_defined_number);
     out->qos = 1;
     out->retain = 0;
 

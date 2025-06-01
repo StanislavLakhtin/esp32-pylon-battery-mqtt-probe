@@ -34,56 +34,47 @@ static char g_wifi_ssid[17] = ""; // 16 символов + '\0'
 static void event_handler(void *arg,
                           esp_event_base_t base,
                           int32_t id,
-                          void *data)
-{
-    if (base == WIFI_EVENT)
-    {
-        switch (id)
-        {
-
-        case WIFI_EVENT_STA_START:
-            oled_ui_update_wifi("?", WIFI_CONNECTING, "");
-            esp_wifi_connect();
-            break;
-
-        case WIFI_EVENT_STA_CONNECTED:
-        {
-            const wifi_event_sta_connected_t *ev = data;
-            size_t n = ev->ssid_len > 16 ? 16 : ev->ssid_len;
-            memcpy(g_wifi_ssid, ev->ssid, n);
-            g_wifi_ssid[n] = '\0';
-
-            oled_ui_update_wifi(g_wifi_ssid, WIFI_CONNECTING, "");
-            ESP_LOGI(TAG, "Connected to AP: %s", g_wifi_ssid);
-            break;
-        }
-
-        case WIFI_EVENT_STA_DISCONNECTED:
-        {
-            oled_ui_update_wifi(g_wifi_ssid, WIFI_DISCONNECTED, "");
-            ESP_LOGW(TAG, "Disconnected from AP: %s", g_wifi_ssid);
-
-            if (s_retry_num < MAX_RETRY)
-            {
-                s_retry_num++;
+                          void *data) {
+    esp_mqtt_client_handle_t mqtt_client = arg;
+    if (base == WIFI_EVENT) {
+        switch (id) {
+            case WIFI_EVENT_STA_START:
+                oled_ui_update_wifi("?", WIFI_CONNECTING, "");
                 esp_wifi_connect();
-                ESP_LOGI(TAG, "Retry %u/%u …", s_retry_num, MAX_RETRY);
-            }
-            else
-            {
-                ESP_LOGE(TAG, "Max retries reached, rebooting");
-                esp_restart();
-            }
-            break;
-        }
+                break;
 
-        default:
-            break;
-        }
-    }
+            case WIFI_EVENT_STA_CONNECTED: {
+                const wifi_event_sta_connected_t *ev = data;
+                size_t n = ev->ssid_len > 16 ? 16 : ev->ssid_len;
+                memcpy(g_wifi_ssid, ev->ssid, n);
+                g_wifi_ssid[n] = '\0';
 
-    else if (base == IP_EVENT && id == IP_EVENT_STA_GOT_IP)
-    {
+                oled_ui_update_wifi(g_wifi_ssid, WIFI_CONNECTING, "");
+                ESP_LOGI(TAG, "Connected to AP: %s", g_wifi_ssid);
+                break;
+            }
+
+            case WIFI_EVENT_STA_DISCONNECTED: {
+                oled_ui_update_wifi(g_wifi_ssid, WIFI_DISCONNECTED, "");
+                ESP_LOGW(TAG, "Disconnected from AP: %s", g_wifi_ssid);
+                ESP_LOGW(TAG, "Stopping MQTT");
+                esp_mqtt_client_stop(mqtt_client);
+
+                if (s_retry_num < MAX_RETRY) {
+                    s_retry_num++;
+                    esp_wifi_connect();
+                    ESP_LOGI(TAG, "Retry %u/%u …", s_retry_num, MAX_RETRY);
+                } else {
+                    ESP_LOGE(TAG, "Max retries reached, rebooting");
+                    esp_restart();
+                }
+                break;
+            }
+
+            default:
+                break;
+        }
+    } else if (base == IP_EVENT && id == IP_EVENT_STA_GOT_IP) {
         const ip_event_got_ip_t *ev = data;
         char ipbuf[16];
         esp_ip4addr_ntoa(&ev->ip_info.ip, ipbuf, sizeof ipbuf);
@@ -91,11 +82,14 @@ static void event_handler(void *arg,
         oled_ui_update_wifi(g_wifi_ssid, WIFI_CONNECTED, ipbuf);
         s_retry_num = 0;
         ESP_LOGI(TAG, "Got IP: %s", ipbuf);
+        ESP_LOGI(TAG, "Connecting to MQTT broker…");
+        ESP_LOGI(TAG, "mqtt_client = %p", mqtt_client);
+        esp_mqtt_client_start(mqtt_client);
     }
 }
 
-void wifi_init_sta(void)
-{
+void wifi_init_sta(esp_mqtt_client_handle_t mqtt_client) {
+    ESP_LOGI(TAG, "mqtt_client = %p", mqtt_client);
     s_wifi_event_group = xEventGroupCreate();
 
     led_set_state(LED_STATE_OFF);
@@ -111,15 +105,15 @@ void wifi_init_sta(void)
     esp_event_handler_instance_t instance_any_id;
     esp_event_handler_instance_t instance_got_ip;
     ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT,
-                                                        ESP_EVENT_ANY_ID,
-                                                        &event_handler,
-                                                        NULL,
-                                                        &instance_any_id));
+        ESP_EVENT_ANY_ID,
+        &event_handler,
+        mqtt_client,
+        &instance_any_id));
     ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT,
-                                                        IP_EVENT_STA_GOT_IP,
-                                                        &event_handler,
-                                                        NULL,
-                                                        &instance_got_ip));
+        IP_EVENT_STA_GOT_IP,
+        &event_handler,
+        mqtt_client,
+        &instance_got_ip));
 
     wifi_config_t wifi_config = {
         .sta = {

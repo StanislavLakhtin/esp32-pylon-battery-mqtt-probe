@@ -24,8 +24,10 @@ typedef struct {
 } MQTTPayload;
 
 void mqtt_publish_queue_init(void);
+
 void mqtt_publish_set_client(esp_mqtt_client_handle_t client); // ← добавляем это
 bool mqtt_publish_enqueue(const MQTTPayload *msg);
+
 void mqtt_publish_task(void *param);
 
 #endif

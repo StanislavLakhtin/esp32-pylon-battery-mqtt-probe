@@ -26,3 +26,22 @@ The probe expects packets with a very specific header type: cid1=0x46, cid2=0x00
 If this project was useful to you, I ask you to help me find interesting projects or jobs. 
 
 Ready to move if necessary. Thank you.
+
+## Config parameters for HomeAssistant
+
+Topic should be like 
+
+`homeassistant/sensor/<unique_id>/config`
+
+with body 
+
+```
+{
+  "name": "Battery Charge Percent",
+  "state_topic": "sl/probe1/battery/03/info",
+  "unit_of_measurement": "%",
+  "value_template": "{{ ((value_json.total_voltage_mV | float - 48000) / (57600 - 48000) * 100) | clamp(0, 100) | round(1) }}",
+  "unique_id": "probe1_battery_percentage",
+  "device_class": "battery"
+}
+```
